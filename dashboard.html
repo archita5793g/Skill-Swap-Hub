@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dashboard - Skill Swap Hub</title>
+  <link rel="stylesheet" href="css/style.css"/>
+  <style>
+    /* ===== CHAT STYLES ===== */
+    .chat-layout {
+      display: flex;
+      height: calc(100vh - 120px);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+
+    /* Left: contacts list */
+    .chat-sidebar {
+      width: 280px;
+      min-width: 280px;
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .chat-sidebar-header {
+      padding: 1.2rem 1rem;
+      border-bottom: 1px solid var(--border);
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .contacts-list {
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .contact-item {
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+      padding: 0.9rem 1rem;
+      cursor: pointer;
+      border-bottom: 1px solid var(--border);
+      transition: background 0.15s;
+      position: relative;
+    }
+
+    .contact-item:hover    { background: var(--surface2); }
+    .contact-item.active   { background: rgba(108,99,255,0.12); border-left: 3px solid var(--accent); }
+
+    .contact-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 1rem;
+      flex-shrink: 0;
+    }
+
+    .contact-info { flex: 1; overflow: hidden; }
+    .contact-name { font-size: 0.9rem; font-weight: 600; }
+    .contact-preview {
+      font-size: 0.78rem;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .unread-badge {
+      background: var(--accent);
+      color: #fff;
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 0.15rem 0.5rem;
+      border-radius: 50px;
+      min-width: 20px;
+      text-align: center;
+    }
+
+    /* Right: chat window */
+    .chat-window {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .chat-window-header {
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+      background: var(--surface);
+    }
+
+    .chat-window-header h3 { font-size: 1rem; margin-bottom: 0.1rem; }
+    .chat-window-header p  { font-size: 0.78rem; color: var(--muted); }
+
+    .chat-online-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--green);
+      display: inline-block;
+      margin-right: 4px;
+    }
+
+    /* Messages area */
+    .messages-area {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1.2rem 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.7rem;
+    }
+
+    .msg-bubble {
+      max-width: 65%;
+      padding: 0.7rem 1rem;
+      border-radius: 16px;
+      font-size: 0.9rem;
+      line-height: 1.5;
+      position: relative;
+      animation: fadeUp 0.2s ease;
+    }
+
+    /* Message sent by ME — right side */
+    .msg-bubble.sent {
+      align-self: flex-end;
+      background: linear-gradient(135deg, var(--accent), #8b7fff);
+      color: #fff;
+      border-bottom-right-radius: 4px;
+    }
+
+    /* Message received — left side */
+    .msg-bubble.received {
+      align-self: flex-start;
+      background: var(--surface2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-bottom-left-radius: 4px;
+    }
+
+    .msg-time {
+      font-size: 0.68rem;
+      opacity: 0.65;
+      margin-top: 0.3rem;
+      text-align: right;
+    }
+
+    .msg-bubble.received .msg-time { text-align: left; }
+
+    .msg-date-divider {
+      text-align: center;
+      font-size: 0.75rem;
+      color: var(--muted);
+      padding: 0.5rem 0;
+      position: relative;
+    }
+
+    .msg-date-divider::before,
+    .msg-date-divider::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      width: 35%;
+      height: 1px;
+      background: var(--border);
+    }
+
+    .msg-date-divider::before { left: 0; }
+    .msg-date-divider::after  { right: 0; }
+
+    /* Empty chat placeholder */
+    .chat-placeholder {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+      gap: 0.8rem;
+    }
+
+    .chat-placeholder .ph-icon { font-size: 3rem; }
+    .chat-placeholder h3 { font-size: 1.1rem; color: var(--text); }
+    .chat-placeholder p  { font-size: 0.88rem; }
+
+    /* Input area */
+    .chat-input-area {
+      padding: 1rem 1.5rem;
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: 0.8rem;
+      align-items: flex-end;
+      background: var(--surface);
+    }
+
+    .chat-input {
+      flex: 1;
+      background: var(--surface2);
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      padding: 0.75rem 1rem;
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.92rem;
+      outline: none;
+      resize: none;
+      max-height: 120px;
+      transition: border-color 0.2s;
+    }
+
+    .chat-input:focus { border-color: var(--accent); }
+
+    .send-btn {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--accent), #8b7fff);
+      border: none;
+      color: #fff;
+      font-size: 1.1rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.15s, box-shadow 0.15s;
+      flex-shrink: 0;
+    }
+
+    .send-btn:hover { transform: scale(1.08); box-shadow: 0 4px 16px rgba(108,99,255,0.4); }
+    .send-btn:active { transform: scale(0.96); }
+
+    /* No contacts state */
+    .no-contacts {
+      padding: 2rem 1rem;
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.85rem;
+      line-height: 1.6;
+    }
+
+    /* New chat button */
+    .new-chat-btn {
+      margin: 0.8rem;
+      width: calc(100% - 1.6rem);
+      padding: 0.6rem;
+      border-radius: 8px;
+      background: rgba(108,99,255,0.12);
+      border: 1px dashed rgba(108,99,255,0.4);
+      color: var(--accent);
+      font-size: 0.85rem;
+      cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+      transition: background 0.2s;
+    }
+
+    .new-chat-btn:hover { background: rgba(108,99,255,0.2); }
+
+    /* Connect button on user card now says Chat */
+    @media (max-width: 768px) {
+      .chat-sidebar { width: 200px; min-width: 200px; }
+      .msg-bubble   { max-width: 85%; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar">
+  <a href="index.html" class="logo">⚡ SkillSwap</a>
+  <div class="nav-user">
+    <div class="nav-avatar" id="nav-avatar">?</div>
+    <span id="nav-username">User</span>
+    <button class="btn btn-outline" style="padding:0.45rem 1rem;font-size:0.82rem" onclick="logout()">Log Out</button>
+  </div>
+</nav>
+
+<!-- DASHBOARD LAYOUT -->
+<div class="dashboard-layout">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-label">Menu</div>
+    <button class="sidebar-item active" data-tab="browse">
+      <span class="icon">🌐</span> Browse People
+    </button>
+    <button class="sidebar-item" data-tab="chat">
+      <span class="icon">💬</span> My Chats
+      <span class="unread-badge" id="unread-count" style="display:none;margin-left:auto"></span>
+    </button>
+    <button class="sidebar-item" data-tab="profile">
+      <span class="icon">✏️</span> My Profile & Skills
+    </button>
+    <button class="sidebar-item" data-tab="availability">
+    <span class="icon">📅</span> Availability
+</button>
+    <button class="sidebar-item" data-tab="admin">
+      <span class="icon">⚙️</span> Admin
+    </button>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="main-content">
+
+    <!-- ===== TAB: BROWSE ===== -->
+    <div class="tab-panel active" id="tab-browse">
+      <div class="page-header">
+        <div>
+          <h2>👋 Hello, <span id="welcome-name-browse"></span></h2>
+          <p>Find people to swap skills with</p>
+        </div>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="s-num" id="stat-total">—</div>
+          <div class="s-label">Total Members</div>
+        </div>
+        <div class="stat-card">
+          <div class="s-num" id="stat-skills">—</div>
+          <div class="s-label">Unique Skills</div>
+        </div>
+      </div>
+
+      <div class="search-bar">
+        <input class="search-input" id="search-input" type="text" placeholder="🔍  Search by skill, name..."/>
+        <button class="btn btn-primary" onclick="loadUsers()">Refresh</button>
+      </div>
+
+      <div class="users-grid" id="users-grid">
+        <div class="loading"><div class="spinner"></div>Loading...</div>
+      </div>
+    </div>
+
+    <!-- ===== TAB: CHAT ===== -->
+    <div class="tab-panel" id="tab-chat">
+      <div class="page-header">
+        <div>
+          <h2>💬 My Chats</h2>
+          <p>Chat with people you've connected with</p>
+        </div>
+      </div>
+
+      <div class="chat-layout">
+
+        <!-- Contacts Panel -->
+        <div class="chat-sidebar">
+          <div class="chat-sidebar-header">
+            <span>Conversations</span>
+          </div>
+          <button class="new-chat-btn" onclick="switchTab('browse')">
+            ➕ Start new chat (Browse People)
+          </button>
+          <div class="contacts-list" id="contacts-list">
+            <div class="no-contacts">No chats yet.<br/>Go to Browse People and click 💬 Chat!</div>
+          </div>
+        </div>
+
+        <!-- Chat Window -->
+        <div class="chat-window" id="chat-window">
+          <div class="chat-placeholder" id="chat-placeholder">
+            <div class="ph-icon">💬</div>
+            <h3>Select a conversation</h3>
+            <p>Choose someone from the left to start chatting</p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ===== TAB: PROFILE ===== -->
+    <div class="tab-panel" id="tab-profile">
+      <div class="page-header">
+        <div>
+          <h2>My Profile</h2>
+          <p>Update your skills and info</p>
+        </div>
+      </div>
+
+      <div class="profile-section">
+        <div class="profile-header-card">
+          <div id="profile-header" style="display:flex;align-items:center;gap:1.2rem;flex-wrap:wrap"></div>
+        </div>
+
+        <div class="alert" id="profile-alert"></div>
+
+        <form id="profile-form">
+          <div class="edit-card">
+            <h3>📋 Basic Info</h3>
+            <div class="form-group">
+              <label>Full Name</label>
+              <input type="text" id="p-name" placeholder="Your name"/>
+            </div>
+            <div class="form-group">
+              <label>Location (optional)</label>
+              <input type="text" id="p-location" placeholder="e.g. Delhi, India"/>
+            </div>
+            <div class="form-group">
+              <label>Bio (optional)</label>
+              <textarea id="p-bio" placeholder="Tell others about yourself..."></textarea>
+            </div>
+          </div>
+
+          <div class="edit-card">
+            <h3>🎓 Skills I Can Teach</h3>
+            <div class="form-group">
+              <label>Enter skills separated by commas</label>
+              <input type="text" id="p-skills" placeholder="e.g. Python, Guitar, Photoshop"/>
+            </div>
+            <p style="color:var(--muted);font-size:0.82rem">Purple tags on your card</p>
+          </div>
+
+          <div class="edit-card">
+            <h3>📚 Skills I Want to Learn</h3>
+            <div class="form-group">
+              <label>Enter skills separated by commas</label>
+              <input type="text" id="p-learn" placeholder="e.g. JavaScript, Yoga, Spanish"/>
+            </div>
+            <p style="color:var(--muted);font-size:0.82rem">Green tags on your card</p>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-full">💾 Save Profile</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- ===== TAB: AVAILABILITY ===== -->
+<div class="tab-panel" id="tab-availability">
+
+    <div class="page-header">
+        <div>
+            <h2>📅 My Availability</h2>
+            <p>Add the time slots when you are available for skill swaps</p>
+        </div>
+    </div>
+
+    <div class="edit-card">
+
+        <h3>Add Availability Slot</h3>
+
+        <div class="form-group">
+            <label>Day</label>
+            <select id="avail-day">
+                <option>Monday</option>
+                <option>Tuesday</option>
+                <option>Wednesday</option>
+                <option>Thursday</option>
+                <option>Friday</option>
+                <option>Saturday</option>
+                <option>Sunday</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>Start Time</label>
+            <input type="time" id="avail-start">
+        </div>
+
+        <div class="form-group">
+            <label>End Time</label>
+            <input type="time" id="avail-end">
+        </div>
+
+        <div class="form-group">
+            <label>Note</label>
+            <input type="text" id="avail-note"
+                   placeholder="Online / Offline / Weekend only">
+        </div>
+
+        <button class="btn btn-primary btn-full"
+        onclick="addAvailability()">
+    📅 Save Availability
+          </button>
+    </div>
+
+    <div class="edit-card" style="margin-top:20px">
+        <h3>Your Availability Slots</h3>
+
+        <div id="availability-list">
+            Loading...
+        </div>
+    </div>
+
+</div>
+
+    <!-- ===== TAB: ADMIN ===== -->
+    <div class="tab-panel" id="tab-admin">
+      <div class="page-header">
+        <div>
+          <h2>⚙️ Admin Panel</h2>
+          <p>Manage database records</p>
+        </div>
+      </div>
+
+      <div class="admin-card">
+        <h3>⚠️ Delete All Users</h3>
+        <p>Permanently deletes all user records (name, email, password) from the database.</p>
+        <button class="btn btn-danger" onclick="deleteAllUsers()">🗑 Delete ALL Users</button>
+      </div>
+
+      <div class="edit-card" style="margin-top:1rem">
+        <h3>📊 Quick DB Check</h3>
+        <p style="color:var(--muted);font-size:0.88rem;margin-bottom:1rem">Run in MySQL Workbench:</p>
+        <code style="display:block;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:1rem;font-size:0.85rem;color:var(--green);line-height:1.8">
+          USE skillswaphub;<br/>
+          SELECT * FROM users;<br/>
+          SELECT * FROM messages;
+        </code>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script src="js/app.js"></script>
+<script>
+  const MSG_API = 'http://localhost:8080/api/messages';
+  let activeChatUserId   = null;
+  let activeChatUserName = null;
+  let pollInterval       = null;
+
+  // ===== OPEN CHAT with a user (called from Browse tab) =====
+  function openChat(userId, userName) {
+    activeChatUserId   = userId;
+    activeChatUserName = userName;
+
+    // Switch to chat tab
+    switchTab('chat');
+
+    // Load contacts then open this chat
+    loadContacts().then(() => {
+      renderChatWindow(userId, userName);
+      loadUserAvailability(userId);
+      loadMessages(userId);
+
+      // Highlight active contact
+      document.querySelectorAll('.contact-item').forEach(c => c.classList.remove('active'));
+      const el = document.getElementById('contact-' + userId);
+      if (el) el.classList.add('active');
+    });
+  }
+
+  // ===== LOAD CONTACTS (people you've chatted with) =====
+  async function loadContacts() {
+    const me   = JSON.parse(localStorage.getItem('loggedUser') || '{}');
+    const list = document.getElementById('contacts-list');
+    if (!list) return;
+
+    try {
+      const res      = await fetch(`${MSG_API}/partners/${me.id}`);
+      const partners = await res.json();
+
+      if (!Array.isArray(partners) || partners.length === 0) {
+        list.innerHTML = '<div class="no-contacts">No chats yet.<br/>Go to Browse People and click 💬 Chat!</div>';
+        return;
+      }
+
+      list.innerHTML = partners.map(p => `
+        <div class="contact-item" id="contact-${p.id}" onclick="selectContact(${p.id},'${p.name}')">
+          <div class="contact-avatar">${p.name.charAt(0).toUpperCase()}</div>
+          <div class="contact-info">
+            <div class="contact-name">${p.name}</div>
+            <div class="contact-preview">${p.skills || 'No skills listed'}</div>
+          </div>
+        </div>
+      `).join('');
+
+    } catch (e) {
+      list.innerHTML = '<div class="no-contacts">Could not load contacts.</div>';
+    }
+  }
+
+  // ===== SELECT a contact from list =====
+  function selectContact(userId, userName) {
+    activeChatUserId   = userId;
+    activeChatUserName = userName;
+
+    document.querySelectorAll('.contact-item').forEach(c => c.classList.remove('active'));
+    const el = document.getElementById('contact-' + userId);
+    if (el) el.classList.add('active');
+
+    renderChatWindow(userId, userName);
+    loadUserAvailability(userId);
+    loadMessages(userId);
+  }
+
+  // ===== RENDER the chat window header + input =====
+  function renderChatWindow(userId, userName) {
+    const win = document.getElementById('chat-window');
+    win.innerHTML = `
+      <div class="chat-window-header">
+        <div class="contact-avatar" style="width:38px;height:38px;font-size:1rem">${userName.charAt(0).toUpperCase()}</div>
+        <div>
+          <h3>${userName}</h3>
+          <p><span class="chat-online-dot"></span>SkillSwap member</p>
+        </div>
+        <button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="deleteConversation(${userId})">🗑 Clear</button>
+      </div>
+
+      <div id="chat-availability"></div>
+
+      <div class="messages-area" id="messages-area">
+        <div class="loading"><div class="spinner"></div>Loading messages...</div>
+      </div>
+
+      <div class="chat-input-area">
+        <textarea
+          class="chat-input"
+          id="chat-input"
+          placeholder="Type a message..."
+          rows="1"
+          onkeydown="handleChatKey(event)"
+          oninput="autoResize(this)"
+        ></textarea>
+        <button class="send-btn" onclick="sendMessage()">➤</button>
+      </div>
+    `;
+
+    // Start polling for new messages every 3 seconds
+    if (pollInterval) clearInterval(pollInterval);
+    pollInterval = setInterval(() => loadMessages(userId), 3000);
+  }
+
+  // ===== LOAD MESSAGES for current chat =====
+  async function loadMessages(partnerId) {
+    const me   = JSON.parse(localStorage.getItem('loggedUser') || '{}');
+    const area = document.getElementById('messages-area');
+    if (!area) return;
+
+    try {
+      const res  = await fetch(`${MSG_API}/conversation?user1=${me.id}&user2=${partnerId}`);
+      const msgs = await res.json();
+
+      // Mark as read
+      await fetch(`${MSG_API}/read?sender=${partnerId}&receiver=${me.id}`, { method: 'PUT' });
+
+      if (!Array.isArray(msgs) || msgs.length === 0) {
+        area.innerHTML = `
+          <div class="chat-placeholder" style="flex:1">
+            <div class="ph-icon">👋</div>
+            <h3>Say hello!</h3>
+            <p>Send the first message to start your skill swap</p>
+          </div>`;
+        return;
+      }
+
+      // Check if user is already scrolled to bottom
+      const isAtBottom = area.scrollHeight - area.clientHeight <= area.scrollTop + 50;
+
+      // Render messages
+      let html = '';
+      let lastDate = '';
+      msgs.forEach(m => {
+        const isMine = m.senderId === me.id;
+        const d      = new Date(m.sentAt);
+        const dateStr= d.toLocaleDateString();
+        const timeStr= d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+        if (dateStr !== lastDate) {
+          html += `<div class="msg-date-divider">${dateStr}</div>`;
+          lastDate = dateStr;
+        }
+
+        html += `
+          <div class="msg-bubble ${isMine ? 'sent' : 'received'}">
+            ${m.content}
+            <div class="msg-time">${timeStr}${isMine ? (m.read ? ' ✓✓' : ' ✓') : ''}</div>
+          </div>`;
+      });
+
+      area.innerHTML = html;
+
+      // Auto-scroll to bottom if already near bottom
+      if (isAtBottom) area.scrollTop = area.scrollHeight;
+
+      // Update unread badge
+      checkUnread();
+
+    } catch (e) {
+      console.error('Error loading messages', e);
+    }
+  }
+
+  // ===== SEND MESSAGE =====
+  async function sendMessage() {
+    const me      = JSON.parse(localStorage.getItem('loggedUser') || '{}');
+    const input   = document.getElementById('chat-input');
+    const content = input?.value.trim();
+
+    if (!content || !activeChatUserId) return;
+
+    try {
+      await fetch(`${MSG_API}/send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          senderId:   me.id,
+          receiverId: activeChatUserId,
+          content:    content
+        })
+      });
+
+      input.value = '';
+      input.style.height = 'auto';
+      loadMessages(activeChatUserId);
+
+    } catch (e) {
+      alert('Failed to send message. Is server running?');
+    }
+  }
+
+  // ===== ENTER KEY sends, Shift+Enter = new line =====
+  function handleChatKey(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  }
+
+  // ===== AUTO-RESIZE textarea =====
+  function autoResize(el) {
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+  }
+
+  // ===== DELETE CONVERSATION =====
+  async function deleteConversation(partnerId) {
+    if (!confirm('Delete this entire conversation?')) return;
+    const me = JSON.parse(localStorage.getItem('loggedUser') || '{}');
+    await fetch(`${MSG_API}/conversation?user1=${me.id}&user2=${partnerId}`, { method: 'DELETE' });
+    loadMessages(partnerId);
+    loadContacts();
+  }
+
+  // ===== CHECK UNREAD COUNT =====
+  async function checkUnread() {
+    const me    = JSON.parse(localStorage.getItem('loggedUser') || '{}');
+    const badge = document.getElementById('unread-count');
+    if (!badge || !me.id) return;
+    try {
+      const res  = await fetch(`${MSG_API}/unread/${me.id}`);
+      const data = await res.json();
+      if (data.unread > 0) {
+        badge.textContent   = data.unread;
+        badge.style.display = 'inline-block';
+      } else {
+        badge.style.display = 'none';
+      }
+    } catch {}
+  }
+
+  // Check unread every 5 seconds
+  setInterval(checkUnread, 5000);
+
+  // Stop polling when leaving chat tab
+  const origSwitch = window.switchTab;
+  window.switchTab = function(tab) {
+    if (tab !== 'chat' && pollInterval) {
+      clearInterval(pollInterval);
+      pollInterval = null;
+    }
+    if (tab === 'chat') loadContacts();
+    origSwitch(tab);
+  };
+</script>
+</body>
+</html>
